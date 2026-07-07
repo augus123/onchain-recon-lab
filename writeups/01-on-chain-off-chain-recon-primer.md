@@ -22,3 +22,14 @@
    - **The batch day dies:** a 24/7/365 ledger has no end-of-day — "as-of" snapshots at a block height and continuous monitoring replace the overnight cycle.
    - **Reference data becomes the control point:** the chain shows addresses, not customers — wallet-to-entity mapping (especially omnibus structures) is the new critical static data.
    - **Evidence gets stronger:** instead of trusting a statement, you can independently re-derive balances from raw chain data — which is exactly where forensic analysis begins.
+
+# 02 - Summary
+   ## 1. Traditional Reconciliation
+   * **The "Two-Book" Problem**: Traditional systems rely on comparing two distinct, siloed ledgers (e.g., an internal bank database vs. a custodian’s statement) to identify breaks.
+   * **Latency & Discrepancies**: Reconciliation is often a T+N process, where delays in data synchronization lead to "breaks" that require manual intervention, investigation, and error correction.
+   * **IntelliMatch Expertise**: My background focuses on automating these rules-based matches, managing exception queues, and ensuring data integrity across fragmented legacy environments.
+   
+   ## 2. Why Blockchain Changes It
+   * **Single Source of Truth**: Blockchain provides an immutable, shared ledger where the "on-chain" state acts as the definitive record, reducing the need for reconciling independent datasets.
+   * **Atomic Settlement**: Technologies like DvP (Delivery versus Payment) allow for the simultaneous exchange of assets, theoretically eliminating counterparty risk and reducing the window for reconciliation errors.
+   * **New Failure Modes**: The shift to blockchain isn't just about efficiency; it introduces complex challenges like smart contract re-entrancy, immutable error handling, and the need to parse "input data" for token movements, which differ significantly from traditional account balance updates.
