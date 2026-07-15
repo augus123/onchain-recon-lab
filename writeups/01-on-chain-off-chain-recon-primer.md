@@ -34,9 +34,9 @@
    * **Atomic Settlement**: Technologies like DvP (Delivery versus Payment) allow for the simultaneous exchange of assets, theoretically eliminating counterparty risk and reducing the window for reconciliation errors.
    * **New Failure Modes**: The shift to blockchain isn't just about efficiency; it introduces complex challenges like smart contract re-entrancy, immutable error handling, and the need to parse "input data" for token movements, which differ significantly from traditional account balance updates.
 
-  # 03 - PM Wrapper Note: Initial Thoughts on the Reconciliation Workstream
+  # 03 - Initial Thoughts on the Reconciliation Workstream
    Establishing a robust reconciliation framework is the architectural backbone of a blockchain migration, as it bridges the gap between legacy ledger finality and the asynchronous, immutable nature of tokenized assets. Success requires a cross-functional strategy that aligns technology, operations, and compliance to define precise data-mapping rules and exception-handling workflows, thereby mitigating critical risks such as financial discrepancies, audit failures, and regulatory non-compliance during the cutover phase. By treating the reconciliation engine not as a post-migration audit tool but as a foundational design component, the project ensures data integrity and operational continuity while navigating the heightened risks of high-velocity, immutable settlement environments.
 
 
-Reconciling Tokenized Assets
+# 04 - Reconciling Tokenized Assets
 The ability to reliably and accurately decode ERC-20 transfers across diverse transaction patterns is paramount for building resilient reconciliation engines for tokenized assets. This technical capability is foundational for building robust reconciliation engines for tokenized assets. It ensures we can independently verify asset movements, identify discrepancies between on-chain events and off-chain ledgers, and provide an auditable trail for regulatory reporting, especially in complex migrations involving stablecoins or tokenized securities where native ETH value is zero but asset movement is significant. This directly informs the data mapping and exception management workstreams.
