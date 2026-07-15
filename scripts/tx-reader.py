@@ -1,7 +1,7 @@
 from web3 import Web3
 
 # 1. Connect to an Ethereum Node
-w3 = Web3(Web3.HTTPProvider('YOUR_INFURA_OR_ALCHEMY_API_URL'))
+w3 = Web3(Web3.HTTPProvider('6840803ddb334ee384c2bcdb51832da6'))
 
 tx_hash = '0xc320223c521d61846e2353e8113c996215bcd798ccced104bdcabb40f4f6acfe'
 
