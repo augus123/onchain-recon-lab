@@ -45,4 +45,4 @@ def decode_tx(tx_hash):
             print(f"Value: {int(log['data'].hex(), 16)}")
 
 # Run for your hash
-decode_tx('0xc320223c521d61846e2353e8113c996215bcd798ccced104bdcabb40f4f6acfe')
+decode_tx('0x379ec34c2de70fd0afa2e94a2288df160130b45e6a400f1c7f90964556565ca5')
