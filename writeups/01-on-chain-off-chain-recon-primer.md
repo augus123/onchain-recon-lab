@@ -54,3 +54,35 @@ False positives/negatives in break detection. Every one of the above failure mod
 Parallel-run integrity during cutover. The entire point of a parallel run is that the old system and the new one must agree on 100% of volume, not just the easy 95%. If your decoder handles vanilla transfers but chokes on the batched, proxied, or internal-transfer cases, the parallel run doesn't fail loudly — it produces a suspiciously clean number that hides exactly the transaction types you most need to prove out before cutover. As the PM, that's the gap that turns into a Sev-1 the week after go-live, not before.
 Auditability for regulatory reporting. For tokenized securities or stablecoin movements, a regulator doesn't want to hear "the tool generally works" — they want a deterministic answer to "show me every transfer of this asset in this window." A decoder that misses proxy-routed or batched transfers means your regulatory report is incomplete by construction, and you won't know which transactions are missing because they were never decoded in the first place — they don't show up as errors, they just don't show up.
 The net effect on operational risk: decoding robustness is what lets you say, with actual confidence rather than hope, "the on-chain figure is complete and correct" — which is the entire value proposition of using the ledger as a reconciliation source in the first place. A recon engine nobody trusts is worse than no recon engine, because it creates false assurance.
+
+# 06 - Reconciliation challenges
+Tokenized deposits, such as those integrated within networks like The Clearing House, significantly intensify hybrid reconciliation challenges by forcing a convergence between two fundamentally different financial operating models. This complexity arises from the need to manage assets that exist simultaneously as cryptographic tokens on a ledger and as fiat liabilities in traditional banking systems
+1. Reconciling Conflicting Finality Models
+The most critical hurdle in hybrid reconciliation is the gap between blockchain finality and settlement finality
+
+Technical vs. Legal Truth: Blockchain finality occurs when a transaction is cryptographically irreversible on the ledger after reaching network consensus
+However, legal "settlement finality"—the point where ownership is irrevocably moved—may still depend on off-chain regulatory frameworks or manual commercial processes
+
+The Reconciliation Burden: Project managers must design processes that account for "limbo" states, such as transactions pending in a mempool or awaiting a specific number of confirmations (e.g., 32 for Ethereum)
+A transaction might be technically final on the chain but not yet legally "settled" in the traditional sense, creating a discrepancy that reconcilers must bridge before declaring a migration phase complete
+
+2. Integration with Traditional Payment Rails (RTP/CHIPS)
+Tokenized deposits often act as a digital layer over traditional rails like RTP (Real-Time Payments) or CHIPS, introducing severe data integration challenges
+
+Diverse Data Sources: Reconcilers must match highly structured but legacy data from SWIFT messages and core banking systems with real-time smart contract events and on-chain state records
+Latency Disparities: While traditional systems like RTP provide fast settlement, they still operate within centralized banking hours or specific institutional windows
+Blockchain operates 24/7/365, meaning the "on-chain truth" may frequently lead or lag behind the traditional ledger, requiring parallel-run reconciliation to ensure the two systems remain synchronized during asset movement
+
+Point of Failure Shifts: In traditional systems, a central Clearing House can be a single point of failure; tokenized deposits aim to decentralize this, but the hybrid nature means the system remains tethered to the stability of the underlying fiat rails
+
+3. Ensuring Consistent Audit Trails
+Maintaining a cohesive audit trail across both environments requires shifting the reconciliation philosophy from "finding breaks" to "validating on-chain truth against off-chain expectations"
+
+Immutability as a Source of Truth: The blockchain provides an immutable, transparent record of every transaction since inception (the Genesis block)
+This record serves as a powerful audit tool, but it must be continuously compared against legacy private ledgers where only individual transactions are visible
+
+Data Coordination: To maintain integrity, firms must implement granular security controls and ensure that every on-chain event is correctly mirrored in off-chain financial records
+This involves defining complex reconciliation rules for hybrid states to ensure that if a "traitor" or technical error occurs in one system, the other can provide the necessary data for rectification
+
+Stakeholder Communication: A major project management task is managing the "different truths" between environments, ensuring that auditors and regulators understand the status of an asset whether it is currently a "token" on a shared ledger or a "deposit" in a traditional account
+
