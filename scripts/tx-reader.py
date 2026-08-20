@@ -1,9 +1,12 @@
+import sys
 from web3 import Web3
 
-# 1. Connect
-w3 = Web3(Web3.HTTPProvider('https://mainnet.infura.io/v3/6840803ddb334ee384c2bcdb51832da6'))
+INFURA_URL = "https://mainnet.infura.io/v3/YOUR_PROJECT_ID"
+w3 = Web3(Web3.HTTPProvider(INFURA_URL))
 
-# Minimal ABI for decoding transfer(address,uint256)
+TRANSFER_SELECTOR = "0xa9059cbb"
+TRANSFER_EVENT_SIG = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+
 ERC20_ABI = [
     {
         "constant": False,
@@ -17,32 +20,61 @@ ERC20_ABI = [
     }
 ]
 
+contract = w3.eth.contract(abi=ERC20_ABI)
+
+
+def decode_transfer_input(input_data):
+    input_data = input_data.hex() if not isinstance(input_data, str) else input_data
+    if not input_data.startswith("0x"):
+        input_data = "0x" + input_data
+
+    if not input_data.startswith(TRANSFER_SELECTOR):
+        print("Not a standard ERC-20 transfer call.")
+        return None
+
+    func_obj, func_params = contract.decode_function_input(input_data)
+    to_address = func_params["_to"]
+    value = func_params["_value"]
+    print(f"Requested transfer -> to: {to_address}, value: {value}")
+    return {"to": to_address, "value": value}
+
+
+def decode_transfer_log(receipt):
+    for log in receipt["logs"]:
+        topics = [t.hex() if not isinstance(t, str) else t for t in log["topics"]]
+        topics = [t if t.startswith("0x") else "0x" + t for t in topics]
+
+        if topics[0] == TRANSFER_EVENT_SIG:
+            sender = w3.to_checksum_address("0x" + topics[1][-40:])
+            receiver = w3.to_checksum_address("0x" + topics[2][-40:])
+            value = int(log["data"], 16)
+            print(f"Actual on-chain transfer -> from: {sender}, to: {receiver}, value: {value}")
+            return {"from": sender, "to": receiver, "value": value}
+    print("No Transfer event found in logs.")
+    return None
+
+
 def decode_tx(tx_hash):
     tx = w3.eth.get_transaction(tx_hash)
     receipt = w3.eth.get_transaction_receipt(tx_hash)
-    
-    # --- Input Data Decoding ---
-    contract = w3.eth.contract(abi=ERC20_ABI)
-    try:
-        func_obj, func_params = contract.decode_function_input(tx['input'])
-        print(f"\n--- Input Data ---")
-        print(f"Function: {func_obj.fn_name}")
-        print(f"To: {func_params['_to']}, Value: {func_params['_value']}")
-    except ValueError:
-        print("\nInput data does not match standard ERC-20 transfer signature.")
 
-    # --- Event Log Decoding ---
-    # Using the contract interface to decode events is much cleaner
-    # For a real implementation, you'd load the full standard ERC-20 ABI
-    print(f"\n--- Event Logs ---")
-    for log in receipt['logs']:
-        # Check if this is a Transfer event by topic
-        if log['topics'][0].hex() == '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef':
-            # This is the Transfer event
-            print(f"Token Address: {log['address']}")
-            print(f"From: {'0x' + log['topics'][1].hex()[-40:]}")
-            print(f"To: {'0x' + log['topics'][2].hex()[-40:]}")
-            print(f"Value: {int(log['data'].hex(), 16)}")
+    requested = decode_transfer_input(tx["input"])
+    actual = decode_transfer_log(receipt)
 
-# Run for your hash
-decode_tx('0x379ec34c2de70fd0afa2e94a2288df160130b45e6a400f1c7f90964556565ca5')
+    if requested and actual:
+        if requested["value"] == actual["value"]:
+            print("MATCH: requested value equals on-chain event value. Transfer reconciled.")
+        else:
+            print("MISMATCH: requested value does not equal on-chain event value. Flag for review.")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python tx-reader.py <transaction_hash>")
+        sys.exit(1)
+
+    if not w3.is_connected():
+        print("Failed to connect to Ethereum node.")
+        sys.exit(1)
+
+    decode_tx(sys.argv[1])
