@@ -78,3 +78,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     decode_tx(sys.argv[1])
+
+
+--Audit & Edge Cases
+
+--Run this 10,000 times against real mainnet traffic, here's where it breaks or misleads you:
+
+--Non-standard transfer paths — Router contracts, transferFrom, smart-contract wallets, or tokens with a nonstandard ABI won't match the plain transfer(address,uint256) selector. The script will report "not a standard ERC-20 transfer" even though a real transfer happened — a false negative on your reconciliation.
+--Multiple Transfer events in one transaction — DEX swaps and batch payments often emit several Transfer logs in a single tx. decode_transfer_log() grabs the first match and stops, silently ignoring the rest. You'd think you reconciled the whole transaction when you only checked one leg of it.
+--No RPC error handling — If Infura times out or rate-limits (easy to hit on the free tier), the script just crashes on that call instead of logging it and moving on. At scale, one flaky network blip kills the whole batch run instead of just that one transaction.
