@@ -93,3 +93,18 @@ The introduction of tokenized assets significantly expands the scope of reconcil
 ### PM Wrapper Note — Multi-Chain Reconciliation Considerations for Migration
 
 When a delivery owner scopes a project reconciling assets across multiple blockchain networks (e.g., DTCC's private Besu and public Canton), the approach should start with a clear data-mapping exercise: define exactly which fields on each chain represent the same real-world asset, and document the transformation rules between them explicitly rather than assuming a 1:1 match. Risk management should treat every bridge or cross-network handoff point as a control point requiring its own reconciliation check, with robust error handling and alerting for mismatches, since these bridge points are historically the highest-risk, highest-exploit areas in multi-chain systems. Stakeholder communication should frame this in familiar reconciliation-control language non-technical stakeholders already understand — breaks, exceptions, and confidence levels — rather than pure blockchain jargon, so compliance and business stakeholders can track risk the same way they already do for traditional settlement reconciliation.
+
+## Real-Time Event Log Reconciliation for 24/7 Settlement
+
+A delivery owner should scope real-time event monitoring around supported
+networks, standardized event definitions, confirmation requirements, target
+addresses, and expected reconciliation outputs. Risk management should account
+for chain reorganizations, delayed or missing logs, incompatible contract
+events, provider outages, and duplicate processing through confirmation checks,
+durable logging, retry controls, and transaction-hash-plus-log-index
+identifiers. Stakeholder communication should clearly define operational
+ownership, exception-handling procedures, settlement status reporting, and
+escalation paths. In a 24/7 settlement environment, including initiatives being
+explored in Japan, standardized event structures and automated reconciliation
+agents help maintain consistent links between on-chain activity and off-chain
+records.
