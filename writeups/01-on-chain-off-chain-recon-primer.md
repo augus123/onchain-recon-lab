@@ -1,110 +1,552 @@
 # 01 — On-Chain / Off-Chain Reconciliation Primer
 
-   Setting the stage: what reconciliation has always been, and what actually
-   changes when one side of the rec becomes a shared, public ledger.
+Setting the stage: what reconciliation has always been, and what actually changes when one side of the reconciliation becomes a shared, public ledger.
 
-   ## 1. Traditional Reconciliation
+---
 
-   - **The core control:** independently prove that two sets of books agree — internal ledgers vs. an external source of truth (custodian, bank, exchange, counterparty) — across cash, positions, and transactions.
-   - **Batch-driven by design:** end-of-day statements and files (SWIFT MT940/950 cash, MT535/536 positions, CSV/XML extracts) are loaded into a matching engine on a daily cycle with hard cut-offs.
-   - **Rule-based matching:** auto-match on key fields (amount, value date, reference, account, ISIN); everything unmatched becomes an exception — a "break."
-   - **Break management is the real work:** investigate, classify (timing vs. true difference), assign ownership, age, escalate, resolve — all with an auditable trail.
-   - **Timing noise dominates:** settlement lags (T+1/T+2), cut-off windows, and time zones mean many breaks self-heal; the skill is separating noise from genuine risk (misbookings, fails, fraud).
-   - **A regulatory control, not housekeeping:** completeness, frequency, and sign-off are evidenced for audit and regulation (SOX, client asset rules, operational risk frameworks).
-   - **The trust model:** every party keeps its own ledger and no single record is authoritative — reconciliation itself is how "truth" gets established.
+# 1. Traditional Reconciliation
 
-   ## 2. Why Blockchain Changes It
+## Core Concepts
 
-   - **One side of the rec becomes shared:** all parties can read the same chain state, so "my books vs. your books" collapses into "my books vs. the chain" — the external statement is now a queryable, cryptographically verifiable dataset.
-   - **Reconciliation doesn't disappear — it relocates:** internal (off-chain) records — sub-ledgers, customer balances, wallet-to-account mappings, accounting entries — still have to be proven against on-chain reality.
-   - **New break categories appear:** gas fees as unplanned cash movements, token decimal/unit conversions, staking rewards and airdrops with no initiating instruction, failed-but-mined transactions, reorgs before finality.
-   - **Settlement semantics change:** contractual settlement dates give way to block confirmations and finality; atomic DvP-style settlement removes classic fails, while address errors become irreversible.
-   - **The batch day dies:** a 24/7/365 ledger has no end-of-day — "as-of" snapshots at a block height and continuous monitoring replace the overnight cycle.
-   - **Reference data becomes the control point:** the chain shows addresses, not customers — wallet-to-entity mapping (especially omnibus structures) is the new critical static data.
-   - **Evidence gets stronger:** instead of trusting a statement, you can independently re-derive balances from raw chain data — which is exactly where forensic analysis begins.
+- **The core control:** Independently prove that two sets of books agree: internal ledgers versus an external source of truth such as custodians, banks, exchanges, or counterparties.
+- **Batch-driven by design:** End-of-day statements and files (SWIFT MT940/950 cash statements, MT535/536 positions, CSV/XML extracts) are loaded into matching engines on scheduled cycles.
+- **Rule-based matching:** Matches are performed using fields such as amount, value date, reference number, account, and ISIN.
+- **Break management is the real work:** Analysts investigate, classify, assign, escalate, and resolve unmatched items.
+- **Timing noise dominates:** Settlement lags, cut-off windows, and time zone differences cause many breaks that later self-resolve.
+- **A regulatory control, not housekeeping:** Reconciliation supports auditability, operational risk controls, and regulatory compliance.
+- **The trust model:** Each participant maintains its own ledger; reconciliation establishes operational truth.
 
-# 02 - Summary
-   ## 1. Traditional Reconciliation
-   * **The "Two-Book" Problem**: Traditional systems rely on comparing two distinct, siloed ledgers (e.g., an internal bank database vs. a custodian’s statement) to identify breaks.
-   * **Latency & Discrepancies**: Reconciliation is often a T+N process, where delays in data synchronization lead to "breaks" that require manual intervention, investigation, and error correction.
-   * **IntelliMatch Expertise**: My background focuses on automating these rules-based matches, managing exception queues, and ensuring data integrity across fragmented legacy environments.
-   
-   ## 2. Why Blockchain Changes It
-   * **Single Source of Truth**: Blockchain provides an immutable, shared ledger where the "on-chain" state acts as the definitive record, reducing the need for reconciling independent datasets.
-   * **Atomic Settlement**: Technologies like DvP (Delivery versus Payment) allow for the simultaneous exchange of assets, theoretically eliminating counterparty risk and reducing the window for reconciliation errors.
-   * **New Failure Modes**: The shift to blockchain isn't just about efficiency; it introduces complex challenges like smart contract re-entrancy, immutable error handling, and the need to parse "input data" for token movements, which differ significantly from traditional account balance updates.
+## Key Takeaway
 
-  # 03 - Initial Thoughts on the Reconciliation Workstream
-   Establishing a robust reconciliation framework is the architectural backbone of a blockchain migration, as it bridges the gap between legacy ledger finality and the asynchronous, immutable nature of tokenized assets. Success requires a cross-functional strategy that aligns technology, operations, and compliance to define precise data-mapping rules and exception-handling workflows, thereby mitigating critical risks such as financial discrepancies, audit failures, and regulatory non-compliance during the cutover phase. By treating the reconciliation engine not as a post-migration audit tool but as a foundational design component, the project ensures data integrity and operational continuity while navigating the heightened risks of high-velocity, immutable settlement environments.
+Traditional reconciliation exists because multiple organizations maintain separate books and records.
 
+---
 
-# 04 - Reconciling Tokenized Assets
-The ability to reliably and accurately decode ERC-20 transfers across diverse transaction patterns is paramount for building resilient reconciliation engines for tokenized assets. This technical capability is foundational for building robust reconciliation engines for tokenized assets. It ensures we can independently verify asset movements, identify discrepancies between on-chain events and off-chain ledgers, and provide an auditable trail for regulatory reporting, especially in complex migrations involving stablecoins or tokenized securities where native ETH value is zero but asset movement is significant. This directly informs the data mapping and exception management workstreams.
+# 2. Why Blockchain Changes Reconciliation
 
-# 05 - Why "decoding robustness" isn't a technical nicety — it's the control itself
-In a traditional recon (IntelliMatch, file-based), the input format is contractually fixed — a FIX message or a fixed-width file either parses or the feed is rejected outright. On-chain, there's no such contract. ERC-20 is a convention, not an enforced ABI, and that gap is exactly where reconciliation breaks silently instead of loudly.
-1. The "same event, five shapes" problem.
-A Transfer can arrive as: a plain wallet-to-wallet call; a transferFrom inside a DEX swap; a batched transfer inside a multicall (one transaction, N logs); an internal transfer from a smart contract during a complex interaction (no top-level "to" field matches the actual recipient); or a proxy-pattern token (USDC-style) where the contract address in the log is a proxy, and the real logic — and sometimes the actual decimals — lives in an implementation contract one hop away. A decoder that only handles the first case will match cleanly in every demo and then silently drop real production volume the first time a DEX trade or an upgradeable token shows up. That's not a bug you catch in QA — it's a break that never surfaces at all, which is worse than a break that does.
-2. Event logs lie about their own identity.
-The Transfer event is identified by a topic hash (keccak256("Transfer(address,address,uint256)")), and many unrelated event types collide or look similar at a glance — NFT Transfer events (ERC-721) share the same signature name but a different indexed-parameter shape (three indexed topics vs two), and a naive decoder that pattern-matches on event name alone will misdecode an NFT movement as a fungible-token transfer, or read the wrong field as the amount. Getting this wrong doesn't throw an error; it produces a plausible-looking wrong number, which is precisely a false negative in disguise.
-3. Decimals is a silent amount-decoder, not metadata.
-Transfer logs carry raw integer amounts — a token with 6 decimals (like USDC) and one with 18 (like most ERC-20s) both just emit an integer. If your decoder doesn't correctly resolve decimals() per-token (and handles the tokens that don't implement it, or lie about it), a $1,000,000 USDC transfer can decode as $1,000,000,000,000. That's not an edge case for a migration program — that's the single most common way an on-chain recon engine manufactures a break that isn't real, or worse, misses one that is.
-How this maps directly to the three things you'd own as a migration PM
-False positives/negatives in break detection. Every one of the above failure modes produces the same operational symptom: the exception queue fills with noise (analysts start ignoring it) or, worse, real breaks get swallowed because the decoder "successfully" produced a plausible but wrong number. A recon engine that cries wolf gets turned off by the ops team within a quarter — you've seen this pattern with legacy tools already; a fragile decoder recreates it on new rails.
-Parallel-run integrity during cutover. The entire point of a parallel run is that the old system and the new one must agree on 100% of volume, not just the easy 95%. If your decoder handles vanilla transfers but chokes on the batched, proxied, or internal-transfer cases, the parallel run doesn't fail loudly — it produces a suspiciously clean number that hides exactly the transaction types you most need to prove out before cutover. As the PM, that's the gap that turns into a Sev-1 the week after go-live, not before.
-Auditability for regulatory reporting. For tokenized securities or stablecoin movements, a regulator doesn't want to hear "the tool generally works" — they want a deterministic answer to "show me every transfer of this asset in this window." A decoder that misses proxy-routed or batched transfers means your regulatory report is incomplete by construction, and you won't know which transactions are missing because they were never decoded in the first place — they don't show up as errors, they just don't show up.
-The net effect on operational risk: decoding robustness is what lets you say, with actual confidence rather than hope, "the on-chain figure is complete and correct" — which is the entire value proposition of using the ledger as a reconciliation source in the first place. A recon engine nobody trusts is worse than no recon engine, because it creates false assurance.
+## What Changes
 
-# 06 - Reconciliation challenges
-Tokenized deposits, such as those integrated within networks like The Clearing House, significantly intensify hybrid reconciliation challenges by forcing a convergence between two fundamentally different financial operating models. This complexity arises from the need to manage assets that exist simultaneously as cryptographic tokens on a ledger and as fiat liabilities in traditional banking systems
-1. Reconciling Conflicting Finality Models
-The most critical hurdle in hybrid reconciliation is the gap between blockchain finality and settlement finality
+- One side of the reconciliation becomes shared.
+- All participants can independently query blockchain state.
+- Internal books still require validation against on-chain records.
+- Settlement finality becomes more important than settlement date.
+- Continuous monitoring replaces end-of-day processing cycles.
+- Wallet-to-customer mapping becomes critical reference data.
 
-Technical vs. Legal Truth: Blockchain finality occurs when a transaction is cryptographically irreversible on the ledger after reaching network consensus
-However, legal "settlement finality"—the point where ownership is irrevocably moved—may still depend on off-chain regulatory frameworks or manual commercial processes
+## New Break Categories
 
-The Reconciliation Burden: Project managers must design processes that account for "limbo" states, such as transactions pending in a mempool or awaiting a specific number of confirmations (e.g., 32 for Ethereum)
-A transaction might be technically final on the chain but not yet legally "settled" in the traditional sense, creating a discrepancy that reconcilers must bridge before declaring a migration phase complete
+- Gas fee discrepancies
+- Token decimal conversion issues
+- Staking rewards and airdrops
+- Failed-but-mined transactions
+- Chain reorganizations before finality
+- Address mapping errors
 
-2. Integration with Traditional Payment Rails (RTP/CHIPS)
-Tokenized deposits often act as a digital layer over traditional rails like RTP (Real-Time Payments) or CHIPS, introducing severe data integration challenges
+## Key Takeaway
 
-Diverse Data Sources: Reconcilers must match highly structured but legacy data from SWIFT messages and core banking systems with real-time smart contract events and on-chain state records
-Latency Disparities: While traditional systems like RTP provide fast settlement, they still operate within centralized banking hours or specific institutional windows
-Blockchain operates 24/7/365, meaning the "on-chain truth" may frequently lead or lag behind the traditional ledger, requiring parallel-run reconciliation to ensure the two systems remain synchronized during asset movement
+Blockchain does not eliminate reconciliation.
 
-Point of Failure Shifts: In traditional systems, a central Clearing House can be a single point of failure; tokenized deposits aim to decentralize this, but the hybrid nature means the system remains tethered to the stability of the underlying fiat rails
+Traditional model:
 
-3. Ensuring Consistent Audit Trails
-Maintaining a cohesive audit trail across both environments requires shifting the reconciliation philosophy from "finding breaks" to "validating on-chain truth against off-chain expectations"
+```text
+Internal Books ↔ External Books
+```
 
-Immutability as a Source of Truth: The blockchain provides an immutable, transparent record of every transaction since inception (the Genesis block)
-This record serves as a powerful audit tool, but it must be continuously compared against legacy private ledgers where only individual transactions are visible
+Blockchain model:
 
-Data Coordination: To maintain integrity, firms must implement granular security controls and ensure that every on-chain event is correctly mirrored in off-chain financial records
-This involves defining complex reconciliation rules for hybrid states to ensure that if a "traitor" or technical error occurs in one system, the other can provide the necessary data for rectification
+```text
+Internal Books ↔ Blockchain State
+```
 
-Stakeholder Communication: A major project management task is managing the "different truths" between environments, ensuring that auditors and regulators understand the status of an asset whether it is currently a "token" on a shared ledger or a "deposit" in a traditional account
+---
 
-Enhanced Hybrid Scope
-The introduction of tokenized assets significantly expands the scope of reconciliation programs by creating a hybrid operating environment where traditional financial systems must coexist with blockchain-based platforms. Reconciliation processes can no longer rely solely on standardized records and settlement cycles, but must account for multiple sources of truth, varying transaction states, and differing definitions of settlement finality across on-chain and off-chain ecosystems. This broader scope requires organizations to establish more granular reconciliation rules, support additional data feeds and integration points, and manage complex exception handling scenarios that arise when transactions move between traditional and tokenized infrastructures. As a result, project teams must coordinate a wider set of stakeholders, oversee more intricate testing and validation activities, and implement stronger governance frameworks to ensure consistency, transparency, and operational readiness across the end-to-end reconciliation landscape.
+# 3. Initial Thoughts on the Reconciliation Workstream
 
+Establishing a robust reconciliation framework is the architectural backbone of any blockchain migration.
 
-### PM Wrapper Note — Multi-Chain Reconciliation Considerations for Migration
+It bridges the gap between:
 
-When a delivery owner scopes a project reconciling assets across multiple blockchain networks (e.g., DTCC's private Besu and public Canton), the approach should start with a clear data-mapping exercise: define exactly which fields on each chain represent the same real-world asset, and document the transformation rules between them explicitly rather than assuming a 1:1 match. Risk management should treat every bridge or cross-network handoff point as a control point requiring its own reconciliation check, with robust error handling and alerting for mismatches, since these bridge points are historically the highest-risk, highest-exploit areas in multi-chain systems. Stakeholder communication should frame this in familiar reconciliation-control language non-technical stakeholders already understand — breaks, exceptions, and confidence levels — rather than pure blockchain jargon, so compliance and business stakeholders can track risk the same way they already do for traditional settlement reconciliation.
+- Legacy ledger finality
+- Blockchain settlement finality
+- Tokenized asset movement
+- Off-chain accounting systems
 
-## Real-Time Event Log Reconciliation for 24/7 Settlement
+Success requires alignment between:
 
-A delivery owner should scope real-time event monitoring around supported
-networks, standardized event definitions, confirmation requirements, target
-addresses, and expected reconciliation outputs. Risk management should account
-for chain reorganizations, delayed or missing logs, incompatible contract
-events, provider outages, and duplicate processing through confirmation checks,
-durable logging, retry controls, and transaction-hash-plus-log-index
-identifiers. Stakeholder communication should clearly define operational
-ownership, exception-handling procedures, settlement status reporting, and
-escalation paths. In a 24/7 settlement environment, including initiatives being
-explored in Japan, standardized event structures and automated reconciliation
-agents help maintain consistent links between on-chain activity and off-chain
-records.
+- Technology teams
+- Operations teams
+- Compliance functions
+- Control owners
+
+The reconciliation engine should be treated as a foundational design component rather than a post-migration audit tool.
+
+Benefits include:
+
+- Reduced operational risk
+- Improved data integrity
+- Stronger auditability
+- Better migration readiness
+- Enhanced regulatory compliance
+
+---
+
+# 4. Reconciling Tokenized Assets
+
+The ability to reliably decode ERC-20 transfers across diverse transaction patterns is foundational for modern reconciliation programs.
+
+Robust decoding enables:
+
+- Independent verification of asset movements
+- Automated break detection
+- Regulatory reporting
+- Audit trail generation
+- Ledger-to-ledger validation
+
+This capability becomes especially important for:
+
+- Stablecoins
+- Tokenized deposits
+- Tokenized securities
+- Settlement tokens
+
+Many token transfers involve:
+
+- Zero native ETH movement
+- Smart contract interactions
+- Internal contract calls
+- Multi-step settlement workflows
+
+The real business movement often exists only within event logs.
+
+---
+
+# 5. Why Decoding Robustness Is the Control
+
+In traditional reconciliation systems, file formats are contractually fixed.
+
+Examples:
+
+- FIX
+- SWIFT
+- CSV
+- XML
+
+A malformed file typically causes the entire feed to fail.
+
+Blockchain creates a different risk model.
+
+A decoder can fail silently while still producing plausible-looking results.
+
+This is often more dangerous than a hard failure.
+
+---
+
+## Failure Mode #1: Same Event, Multiple Shapes
+
+A transfer may appear as:
+
+- Simple wallet-to-wallet transfer
+- `transferFrom()` call
+- DEX swap
+- Internal smart-contract transfer
+- Batched multicall
+- Proxy token transfer
+
+A decoder that handles only the simplest case may silently ignore real production volume.
+
+---
+
+## Failure Mode #2: Event Identity Problems
+
+Similar events may exist across multiple token standards.
+
+Examples:
+
+- ERC-20 Transfer
+- ERC-721 Transfer
+- ERC-1155 Transfer
+
+A naive decoder may:
+
+- Misclassify events
+- Assign incorrect amounts
+- Produce false matches
+
+The result is often a believable but incorrect reconciliation record.
+
+---
+
+## Failure Mode #3: Decimal Handling
+
+Blockchain logs store raw integers.
+
+Examples:
+
+```text
+USDC = 6 decimals
+Most ERC-20 tokens = 18 decimals
+```
+
+Incorrect decimal resolution can create:
+
+- False breaks
+- False matches
+- Material reporting errors
+
+Example:
+
+```text
+1,000,000 USDC
+```
+
+may decode incorrectly if token decimals are not applied properly.
+
+---
+
+## Operational Impact
+
+### False Positives and False Negatives
+
+Operations teams begin ignoring exception queues filled with noise.
+
+### Parallel Run Risk
+
+Migration programs rely on proving old and new systems agree on 100% of transaction volume.
+
+### Regulatory Reporting Risk
+
+Incomplete event decoding leads to incomplete audit populations.
+
+---
+
+# 6. Reconciliation Challenges in Hybrid Environments
+
+Tokenized deposits and tokenized assets create a hybrid operating model:
+
+```text
+Blockchain Networks
++
+Traditional Banking Systems
+```
+
+Both environments must remain synchronized.
+
+---
+
+## Challenge 1: Reconciling Different Finality Models
+
+### Blockchain Finality
+
+Blockchain transactions become increasingly irreversible after confirmation and consensus.
+
+### Legal Settlement Finality
+
+Regulatory and contractual settlement rules may define final ownership differently.
+
+### Reconciliation Impact
+
+A transaction can be:
+
+- Technically final on-chain
+- Not yet legally settled off-chain
+
+This creates reconciliation complexity.
+
+---
+
+## Challenge 2: Traditional Payment Rail Integration
+
+Examples:
+
+- RTP
+- CHIPS
+- SWIFT
+
+Challenges include:
+
+- Data transformation
+- Timing differences
+- Different operating schedules
+- Parallel ledger maintenance
+
+Blockchain operates continuously.
+
+Traditional banking systems often do not.
+
+---
+
+## Challenge 3: Auditability
+
+Blockchain provides:
+
+- Immutable records
+- Transparent transaction histories
+- Independent verification
+
+Traditional systems provide:
+
+- Legal ownership records
+- Accounting books
+- Customer statements
+
+Reconciliation must prove consistency across both environments.
+
+---
+
+## Enhanced Hybrid Scope
+
+Tokenization expands reconciliation beyond traditional settlement processing.
+
+Organizations must now manage:
+
+- Multiple sources of truth
+- Blockchain event streams
+- Traditional ledger records
+- Cross-platform exception management
+- New operational controls
+
+This significantly increases:
+
+- Governance complexity
+- Testing effort
+- Monitoring requirements
+- Stakeholder coordination
+
+---
+
+# 7. The Blockchain Reconciliation Paradigm
+
+Blockchain does not eliminate reconciliation.
+
+Instead, it changes what must be reconciled and where reconciliation breaks occur.
+
+## What Blockchain Solves
+
+Blockchain simplifies proving:
+
+- Did the transaction occur?
+- Which block contains it?
+- Did execution succeed?
+- Which contract processed it?
+- Which events were emitted?
+
+Because blockchain data is:
+
+- Shared
+- Immutable
+- Cryptographically verifiable
+
+Organizations no longer need to compare multiple blockchain ledgers to establish transaction existence.
+
+---
+
+## What Blockchain Does NOT Solve
+
+Blockchain cannot prove:
+
+- The transaction booked correctly in internal systems.
+- Customer mappings are accurate.
+- Accounting entries were created correctly.
+- Regulatory reporting is complete.
+
+The problem shifts from:
+
+```text
+Ledger vs Ledger
+```
+
+to:
+
+```text
+On-Chain Event vs Off-Chain Business Record
+```
+
+---
+
+## Mapping On-Chain Events to Business Records
+
+### On-Chain Data
+
+- Contract address
+- Sender address
+- Recipient address
+- Raw amount
+- Transaction hash
+- Block number
+- Log index
+
+### Off-Chain Data
+
+- Journal ID
+- Account ID
+- Asset identifier
+- Settlement reference
+- Processing status
+- Booking timestamp
+
+### Typical Mapping Model
+
+| On-Chain Field | Off-Chain Equivalent |
+|--------------|----------------------|
+| Transaction Hash | Settlement Reference |
+| Contract Address | Asset Identifier |
+| from | Source Account |
+| to | Destination Account |
+| Raw Value | Ledger Quantity |
+| Block Timestamp | Booking Timestamp |
+| Log Index | Event Identifier |
+
+---
+
+## Common Blockchain Reconciliation Breaks
+
+### On-Chain Event Not Recorded Off-Chain
+
+Transfer exists on-chain but missing from internal systems.
+
+### Off-Chain Event Missing On-Chain
+
+Business event recorded internally but not found on-chain.
+
+### Amount Mismatch
+
+Incorrect decimal conversion.
+
+### Address Mapping Error
+
+Wallet not mapped correctly to internal customer records.
+
+### Status Mismatch
+
+Internal systems report settled while blockchain reports failed or pending.
+
+### Duplicate Processing
+
+Same blockchain event processed multiple times.
+
+### Timing Differences
+
+Events land in different reconciliation windows.
+
+---
+
+# 8. Event Logs as Reconciliation Data Sources
+
+Event logs are often the most important reconciliation data source.
+
+Transaction-level data rarely provides enough business context.
+
+---
+
+## ERC-20 Transfer Event
+
+```solidity
+event Transfer(
+    address indexed from,
+    address indexed to,
+    uint256 value
+);
+```
+
+### Key Reconciliation Fields
+
+- from
+- to
+- value
+
+Example decoded record:
+
+```python
+record = {
+    "event_name": "Transfer",
+    "tx_hash": transaction_hash,
+    "log_index": log_index,
+    "block_number": block_number,
+    "block_time_utc": block_time,
+    "contract_address": token_contract,
+    "from": sender_address,
+    "to": recipient_address,
+    "raw_value": token_value
+}
+```
+
+---
+
+## Why Event Logs Matter
+
+Traditional environments rely on:
+
+- SWIFT messages
+- Position statements
+- CSV extracts
+
+Blockchain systems rely on:
+
+- Event logs
+- ABI definitions
+- Topic hashes
+- Smart contract state changes
+
+---
+
+## Event-Level Keys
+
+Transaction hashes alone are insufficient.
+
+A stronger unique identifier is:
+
+```text
+Network +
+Transaction Hash +
+Log Index
+```
+
+One transaction may emit multiple events.
+
+---
+
+# 9. Smart Contracts and Automated Controls
+
+Smart contracts automate business rules such as:
+
+- Escrow
+- Atomic swaps
+- Delivery-versus-payment (DvP)
+- Asset settlement
+
+These controls reduce certain reconciliation risks.
+
+However, they do not eliminate reconciliation requirements.
+
+---
+
+## Smart Contract Break Conditions
+
+Examples include:
+
+- Reverted transaction
+- Missing event emission
+- Unexpected event emission
+- Unauthorized transfers
+- Stuck contract state
+- Insufficient confirmations
+
+---
+
+## State-Based Reconciliation
+
+Example asset lifecycle:
+
+```text
+Issued
+↓
+Transferred
+↓
+Locked
+↓
+Settled
+↓
+Redeemed
+```
+
+Each transition should be validated
