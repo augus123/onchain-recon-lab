@@ -42,6 +42,8 @@ Traditional reconciliation exists because multiple organizations maintain separa
 - Chain reorganizations before finality
 - Address mapping errors
 
+    ./deep-dives/reconciliation-break-categories.md
+
 ## Key Takeaway
 
 Blockchain does not eliminate reconciliation.
