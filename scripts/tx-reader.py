@@ -248,16 +248,19 @@ def decode_event_logs(w3, receipt, contract_abi):
         block_time = get_block_time(w3, block_number)
 
         record = {
-            "event_name": event_name,
-            "tx_hash": log["transactionHash"].hex(),
-            "log_index": log["logIndex"],
-            "block_number": block_number,
-            "block_time_utc": block_time.isoformat(),
-            "contract_address": Web3.to_checksum_address(
-                log["address"]
-            ),
-            "arguments": event_args,
-        }
+    "event_name": event_name,
+    "tx_hash": log["transactionHash"].hex(),
+    "log_index": log["logIndex"],
+    "block_number": block_number,
+    "block_time_utc": block_time.isoformat(),
+    "contract_address": Web3.to_checksum_address(
+        log["address"]
+    ),
+    "from": Web3.to_checksum_address(from_addr),
+    "to": Web3.to_checksum_address(to_addr),
+    "raw_value": raw_value,
+}
+``
 
         decoded_records.append(record)
         print(f"Reconciliation record: {record}")
