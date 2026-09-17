@@ -118,6 +118,301 @@ Many token transfers involve:
 
 The real business movement often exists only within event logs.
 
+    ## 4.1 Data Models and Schema Translation
+
+One of the most underestimated challenges in hybrid reconciliation is that traditional financial systems and blockchain networks often describe the same economic activity using fundamentally different data models.
+
+Traditional banking and securities systems typically use an **account-based model**:
+
+```text
+Account A
+  ↓
+Transfer $100
+  ↓
+Account B
+```
+
+A ledger entry generally records:
+
+- Sender account
+- Recipient account
+- Amount
+- Currency
+- Settlement status
+- Business reference
+
+Many blockchain networks, including Ethereum-compatible environments, also expose data in an account-oriented format:
+
+```text
+from
+to
+value
+transaction_hash
+```
+
+However, reconciliation complexity increases when integrating with platforms that use alternative transaction structures, such as UTXO-based systems.
+
+A UTXO transaction may contain:
+
+```text
+Inputs:
+  UTXO-1 = $40
+  UTXO-2 = $80
+
+Outputs:
+  Beneficiary = $100
+  Change Address = $20
+```
+
+Unlike a traditional transfer, there is no single "from account" field.
+
+Instead, ownership is inferred from the set of consumed inputs.
+
+For reconciliation teams this means:
+
+| Traditional Ledger | Blockchain Equivalent |
+|-------------------|----------------------|
+| Debit Account | Inputs or Sending Address |
+| Credit Account | Outputs or Receiving Address |
+| Transaction Reference | Transaction Hash |
+| Settlement Timestamp | Block Timestamp |
+| Amount | Value or Token Quantity |
+| Status | Confirmation / Finality State |
+
+Tokenized bill programs make this challenge more complex.
+
+For example:
+
+```text
+Traditional System
+-------------------------------------------------
+Bill ID: TB-12345
+Owner: Bank A
+Value: HKD 100M
+Settlement Status: Completed
+```
+
+may correspond to:
+
+```text
+Blockchain Representation
+-------------------------------------------------
+Contract Address
+Token ID
+Wallet Address
+Transfer Event
+Block Number
+Transaction Hash
+```
+
+A reconciliation engine must therefore perform both:
+
+1. **Data transformation**
+2. **Business interpretation**
+
+before matching can occur.
+
+Failure to maintain accurate mapping tables can create false breaks even when economic ownership is correct in both systems.
+
+---
+
+## 4.2 Reconciling Different Finality Models
+
+Traditional payment systems and blockchain networks frequently operate under different assumptions about settlement finality.
+
+In traditional finance:
+
+```text
+Message Accepted
+↓
+Payment Settled
+↓
+Settlement Final
+```
+
+Finality is usually governed by:
+
+- Clearinghouse rules
+- Legal agreements
+- Operating procedures
+- Regulatory frameworks
+
+Blockchain systems introduce a different model.
+
+On-chain transactions may become increasingly reliable as additional blocks are added, but finality can be:
+
+- Probabilistic
+- Economic
+- Network-dependent
+
+This creates several reconciliation questions:
+
+### Has the transaction been mined?
+
+```text
+Pending
+↓
+Included in Block
+```
+
+### Has it reached operational confirmation requirements?
+
+```text
+1 Confirmation
+↓
+12 Confirmations
+↓
+Operationally Approved
+```
+
+### Has it reached economic finality?
+
+Different organizations may require different thresholds.
+
+A treasury department may accept:
+
+```text
+12 confirmations
+```
+
+while a high-value settlement workflow may require:
+
+```text
+32 confirmations
+or equivalent finality guarantees
+```
+
+For tokenized bill and stablecoin settlement initiatives, reconciliation controls must clearly define:
+
+- What constitutes settlement?
+- What constitutes finality?
+- When can accounting records be booked?
+- When can assets be considered transferred?
+
+Without explicit answers, different teams may operate using different definitions of truth, creating reconciliation breaks despite identical on-chain activity.
+
+---
+
+## 4.3 Golden Source Strategy During Parallel Runs
+
+Parallel-run periods represent one of the highest-risk phases of any tokenization initiative.
+
+During migration, organizations often operate:
+
+```text
+Traditional Ledger
++
+Blockchain Ledger
+```
+
+simultaneously.
+
+This introduces an important governance question:
+
+> Which system is the authoritative source of truth?
+
+Several models are possible.
+
+### Model 1: On-Chain Golden Source
+
+```text
+Blockchain Ledger
+↓
+Authoritative Record
+```
+
+Advantages:
+
+- Immutable audit trail
+- Shared visibility
+- Independent verification
+
+Challenges:
+
+- Legacy systems must continuously synchronize
+- Regulatory reporting may still depend on off-chain systems
+
+---
+
+### Model 2: Off-Chain Golden Source
+
+```text
+Traditional Registry
+↓
+Authoritative Record
+```
+
+Advantages:
+
+- Familiar operating model
+- Existing controls
+- Established governance
+
+Challenges:
+
+- Blockchain activity becomes a derived representation
+- Reconciliation must ensure perfect synchronization
+
+---
+
+### Model 3: Reconciled Golden Source
+
+```text
+On-Chain Data
+        +
+Off-Chain Data
+        ↓
+Reconciled Master View
+```
+
+Advantages:
+
+- Supports hybrid environments
+- Enables gradual migration
+- Simplifies stakeholder reporting
+
+Challenges:
+
+- Additional operational complexity
+- Requires robust reconciliation tooling
+
+---
+
+### Dynamic Golden Source Transition
+
+For large-scale tokenization programs, the authoritative source may not remain static.
+
+A migration may progress through stages:
+
+```text
+Phase 1
+Off-Chain Golden Source
+
+↓
+
+Phase 2
+Reconciled Golden Source
+
+↓
+
+Phase 3
+On-Chain Golden Source
+```
+
+The reconciliation framework must support these transitions without introducing control gaps.
+
+This is particularly important as new settlement rails, stablecoin infrastructure, and tokenized asset platforms are integrated over time.
+
+Without a clearly defined golden-source strategy, organizations risk:
+
+- Duplicate bookings
+- Conflicting balances
+- Inconsistent reporting
+- Cutover failures
+- Regulatory reporting discrepancies
+
+The golden-source decision is therefore not merely a technical architecture choice. It becomes one of the most important operational-control decisions in the migration program because it determines which record is considered authoritative when reconciliation breaks occur.
+
 ---
 
 # 5. Why Decoding Robustness Is the Control
@@ -547,6 +842,43 @@ Locked
 Settled
 ↓
 Redeemed
+
 ```
 
-Each transition should be validated
+## PM Wrapper Note — Why This Matters for a Migration Lead
+
+For a migration lead supporting tokenized assets, stablecoin settlement, or large-scale financial-market modernization initiatives, understanding blockchain reconciliation is not a purely technical exercise. It directly influences how reconciliation workstreams are scoped, how migration risks are identified, and how operational readiness is assessed prior to production cutover.
+
+From a delivery perspective, one of the earliest responsibilities is defining the reconciliation operating model. Traditional migration programs typically reconcile two account-based systems that share similar concepts of settlement, ownership, and finality. Tokenized asset programs introduce a more complex challenge because blockchain platforms and traditional financial infrastructures frequently represent the same economic activity using different data models, identifiers, and settlement assumptions.
+
+A migration lead must therefore ensure that reconciliation workstreams explicitly account for:
+
+- On-chain versus off-chain data model differences
+- Address-to-customer and wallet-to-account mapping requirements
+- Token decimal and asset-normalization logic
+- Event-log based settlement records versus traditional ledger entries
+- Cross-platform reference-data dependencies
+- Multiple definitions of transaction status and settlement state
+
+Failure to identify these differences early can create large volumes of false reconciliation breaks, delay testing cycles, and significantly increase cutover risk.
+
+### Finality as a Program Risk
+
+A particularly important consideration is settlement finality.
+
+Traditional payment and securities systems often operate under legally defined settlement frameworks in which payment, ownership transfer, and settlement completion follow well-understood operational processes.
+
+Blockchain networks introduce a different concept of finality. A transaction may be:
+
+```text
+Pending
+↓
+Included in a Block
+↓
+Confirmed
+↓
+Operationally Accepted
+↓
+Considered Final
+
+```
