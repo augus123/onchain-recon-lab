@@ -657,7 +657,26 @@ to:
 ```text
 On-Chain Event vs Off-Chain Business Record
 ```
+## Chain Finality vs. Settlement Finality
 
+The immutability that proves a transaction happened does not, by itself,
+tell me when it is settled.
+
+- **Chain finality** is technical: the transaction is buried deep enough
+  that it is effectively irreversible on the ledger.
+- **Settlement finality** is legal and operational: the point at which the
+  transfer is unconditional and irrevocable under my firm's rules. That also
+  depends on off-chain conditions such as recon confirmation and compliance
+  sign-off.
+
+A transaction can be chain-final and still NOT settled. If the on-chain
+event has not yet been matched to the right off-chain entry, the books do
+not agree, and it is an open break regardless of confirmation depth.
+
+This is where the two ideas meet: chain finality tells me the event is
+real, but the matching step decides whether it counts as settled. A
+migration plan must define where its own settlement-finality line sits
+relative to chain finality.
 ---
 
 ## Mapping On-Chain Events to Business Records
